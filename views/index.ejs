@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Open Library Book Manager</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        #books {
+            display: flex;
+            flex-wrap: wrap;
+        }
+        .book {
+            margin: 10px;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center">Open Library Book Manager</h1>
+
+        <!-- Search Section -->
+        <section class="mt-5">
+            <h2>Search for Books</h2>
+            <form id="search-form" class="d-flex mb-4">
+                <input
+                    type="text"
+                    id="search-query"
+                    class="form-control me-2"
+                    placeholder="Enter book title, author, or keyword"
+                    required
+                />
+                <button type="submit" class="btn btn-primary">Search</button>
+            </form>
+            <div id="search-results" class="row"></div>
+        </section>
+        <div id="results" class="row"></div>
+
+        <!-- Modal for Reading the Book -->
+        <div class="modal fade" id="bookModal" tabindex="-1" aria-labelledby="bookModalLabel" aria-hidden="true">
+          <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="bookModalLabel">Read Book</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+                <iframe
+                  id="bookReader"
+                  src=""
+                  width="100%"
+                  height="500"
+                  frameborder="0"
+                  allowfullscreen
+                ></iframe>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        
+        <!-- Saved Books Section -->
+        <section class="mt-5">
+            <h2>My Saved Books</h2>
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Author</th>
+                        <th>Year</th>
+                        <th>Rating</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="saved-books"></tbody>
+            </table>
+        </section>
+    </div>
+    <!-- Edit Book Modal -->
+<!-- Edit Book Modal -->
+<div class="modal fade" id="editBookModal" tabindex="-1" aria-labelledby="editBookModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editBookModalLabel">Edit Book</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="edit-book-form">
+            <div class="mb-3">
+              <label for="edit-title" class="form-label">Title</label>
+              <input type="text" class="form-control" id="edit-title" required>
+            </div>
+            <div class="mb-3">
+              <label for="edit-author" class="form-label">Author</label>
+              <input type="text" class="form-control" id="edit-author" required>
+            </div>
+            <div class="mb-3">
+              <label for="edit-year" class="form-label">Year</label>
+              <input type="number" class="form-control" id="edit-year" required>
+            </div>
+            <div class="mb-3">
+              <label for="edit-rating" class="form-label">Rating</label>
+              <input type="number" class="form-control" id="edit-rating" step="0.1" min="0" max="5">
+            </div>
+            <div class="mb-3">
+              <label for="edit-status" class="form-label">Status</label>
+              <select class="form-control" id="edit-status">
+                <option value="Unread">Unread</option>
+                <option value="Read">Read</option>
+              </select>
+            </div>
+            <input type="hidden" id="edit-book-id">
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-primary" onclick="saveEditedBook()">Save changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+     <!-- Include Bootstrap JS and a client-side script -->
+     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+     
+    <script>
+        // Function to open the modal and embed the book
+        function readBook(bookId) {
+            // Check if the bookId is valid
+            if (!bookId) {
+                alert('Unable to read this book. Please try another one.');
+                return;
+            }
+    
+            const modal = new bootstrap.Modal(document.getElementById('bookModal'));
+            document.getElementById('bookReader').src = `/book/${bookId}`;
+            modal.show();
+        }
+    
+        // Fetch and display saved books from the database
+        const API_BASE_URL = 'http://localhost:3000';
+    
+        async function fetchSavedBooks() {
+            const response = await fetch(`${API_BASE_URL}/books`);
+            const books = await response.json();
+    
+            const savedBooksTable = document.getElementById('saved-books');
+            savedBooksTable.innerHTML = '';
+            books.forEach((book) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${book.title}</td>
+                    <td>${book.author || 'Unknown'}</td>
+                    <td>${book.year || 'Unknown'}</td>
+                    <td>${book.rating || 'N/A'}</td>
+                    <td>${book.status}</td>
+                    <td>
+                        <button class="btn btn-warning btn-sm" onclick="updateBook(${book.id})">Edit</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteBook(${book.id})">Delete</button>
+                    </td>
+                `;
+                savedBooksTable.appendChild(row);
+            });
+        }
+    
+        document.getElementById('search-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const query = document.getElementById('search-query').value;
+    const response = await fetch(`${API_BASE_URL}/search?query=${encodeURIComponent(query)}`);
+    const results = await response.json();
+
+    const resultsDiv = document.getElementById('search-results');
+    resultsDiv.innerHTML = ''; // Clear previous results
+
+    results.forEach((book) => {
+        const bookKey = book.key ? book.key.replace('/works/', '') : null;
+
+        const bookDiv = document.createElement('div');
+        bookDiv.className = 'col-md-4 mb-3';
+        bookDiv.innerHTML = `
+            <div class="card h-full">
+                <img src="${book.coverImageUrl || 'https://via.placeholder.com/150'}" class="card-img-top " alt="${book.title} cover" style="height:200px; object-fit: cover;">
+                <div class="card-body">
+                    <h5 class="card-title">${book.title}</h5>
+                    <p class="card-text">Author: ${book.author_name?.join(', ') || 'Unknown'}</p>
+                    <p class="card-text">Year: ${book.first_publish_year || 'Unknown'}</p>
+                    
+                    <!-- Only show "Read" button if a valid key exists -->
+                    ${bookKey ? `<button class="btn btn-success" onclick="readBook('${bookKey}')">Read</button>` : ''}
+                    
+                    <button class="btn btn-primary" onclick="saveBook('${book.title}', '${book.author_name?.[0] || ''}', ${
+            book.first_publish_year || null
+        })">
+                        Save to My Books
+                    </button>
+                </div>
+            </div>
+        `;
+        resultsDiv.appendChild(bookDiv);
+    });
+});
+
+    
+        // Save a book to the database
+        async function saveBook(title, author, year, rating, status) {
+    // Assign default values if any fields are missing
+    author = author || 'Unknown';
+    year = year || 0;
+    rating = rating || null;
+    status = status || 'Unread';
+
+    const response = await fetch(`${API_BASE_URL}/books`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, author, year, rating, status }),
+    });
+
+    if (response.ok) {
+        fetchSavedBooks();
+        alert('Book saved successfully!');
+    } else {
+        alert('Failed to save book.');
+    }
+}
+
+        // edit book 
+        async function updateBook(bookId) {
+    // Open the edit modal (initialize Bootstrap modal)
+    const modalElement = document.getElementById('editBookModal');
+    const modal = new bootstrap.Modal(modalElement);
+
+    // Fetch current book details from the server
+    fetch(`${API_BASE_URL}/edit/${bookId}`)
+        .then(response => response.json())
+        .then(book => {
+            // Populate the form with the current book's data
+            document.getElementById('edit-title').value = book.title;
+            document.getElementById('edit-author').value = book.author;
+            document.getElementById('edit-year').value = book.year;
+            document.getElementById('edit-rating').value = book.rating || '';
+            document.getElementById('edit-status').value = book.status;
+            document.getElementById('edit-book-id').value = book.id; // Store book id in a hidden field
+
+            // Show the modal
+            modal.show();
+        })
+        .catch(error => alert('Error fetching book details.'));
+}
+async function saveEditedBook() {
+    const bookId = document.getElementById('edit-book-id').value;
+    const title = document.getElementById('edit-title').value;
+    const author = document.getElementById('edit-author').value;
+    const year = document.getElementById('edit-year').value;
+    const rating = document.getElementById('edit-rating').value;
+    const status = document.getElementById('edit-status').value;
+
+    const updatedBook = {
+        title,
+        author,
+        year,
+        rating,
+        status,
+    };
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/edit/${bookId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(updatedBook),
+        });
+
+        const result = await response.json();
+        if (response.ok) {
+            alert('Book updated successfully!');
+            // Optionally, close the modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('editBookModal'));
+            modal.hide();
+            // Refresh the book list or update the UI as needed
+            fetchSavedBooks();
+        } else {
+            alert(result.error || 'Failed to update book.');
+        }
+    } catch (error) {
+        alert('Error updating book');
+        console.error(error);
+    }
+}
+
+
+        // Delete a book from the database
+        async function deleteBook(id) {
+    const response = await fetch(`${API_BASE_URL}/delete/${id}`, { method: 'DELETE' });
+    
+    if (response.ok) {
+        fetchSavedBooks(); // Fetch the updated list of books
+        alert('Book deleted successfully!');
+    } else {
+        const errorData = await response.json();
+        alert(`Failed to delete book. ${errorData.error}`);
+    }
+}
+
+    
+        // Fetch saved books on page load
+        fetchSavedBooks();
+    </script>
+</body>
+</html>    
